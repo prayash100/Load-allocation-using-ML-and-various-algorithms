@@ -325,35 +325,53 @@ plt.grid(True)
 plt.show() 
 
 # Step 9: Frequency Deviation Plot Function with 50 Hz Base
-def plot_frequency_stability(solution,renewable_capacity, conventional_capacity, load_demand, num_steps=100):
-    # Arrays to store frequency deviations over time
-    frequency_deviation = []
+def plot_frequency_stability(solution, load_demand, num_steps=100):
+    # Extract individual power sources from the solution
+    solar_output, wind_output, coal_output, gas_output = solution
+
+    # Array to store frequency deviations over time
+    frequency_obtained = []
 
     # Simulate frequency deviations over time
     for t in range(num_steps):
-        total = np.sum(solution)
-        deviation_mw = total - load_demand[t]
+        # Get the total power generation at this time step
+        total_generation = solar_output + wind_output + coal_output + gas_output
+        delta_P = total_generation - load_demand[t]  # Power mismatch
+
+        # Inertia and damping constants
+        H_solar, H_wind, H_coal, H_gas = 0.05, 0.1, 5.0, 3.0
+        D_solar, D_wind, D_coal, D_gas = 0.02, 0.03, 0.3, 0.2
+
+        # Weighted total inertia and damping effect
+        H_total = (solar_output * H_solar + wind_output * H_wind +
+                   coal_output * H_coal + gas_output * H_gas) / (total_generation + 1e-6)
+
+        D_total = (solar_output * D_solar + wind_output * D_wind +
+                   coal_output * D_coal + gas_output * D_gas) / (total_generation + 1e-6)
+
         # Calculate frequency deviation
-        deviation_hz = 50 + (deviation_mw * 0.000011)  # Adjust sensitivity as needed
-        frequency_deviation.append(deviation_hz)
-    
-    # Plot frequency deviations over time
+        frequency_deviation = (delta_P * 0.000011) / (H_total + D_total + 1e-6)  # Prevent div by zero
+        obtained_hz = 50 + frequency_deviation  # Adjusted frequency
+
+        frequency_obtained.append(obtained_hz)
+
+    # Plot the frequency stability over time
     plt.figure(figsize=(10, 5))
-    plt.plot(range(num_steps), frequency_deviation, label="Frequency (Hz)")
-    plt.axhline(50, color='red', linestyle='--', label='Ideal Frequency (50 Hz)')
-    plt.xlabel('Time Step')
-    plt.ylabel('Frequency (Hz)')
-    plt.title('Grid Frequency Stability Over Time')
+    plt.plot(range(num_steps), frequency_obtained, label="Grid Frequency (Hz)", color="blue")
+    plt.axhline(y=50, color="red", linestyle="--", label="Nominal Frequency (50 Hz)")
+    plt.xlabel("Time Steps")
+    plt.ylabel("Frequency (Hz)")
+    plt.title("Grid Frequency Stability Over Time")
     plt.legend()
-    plt.grid(True)
+    plt.grid()
     plt.show()
 
 
 # Call the function to plot frequency stability
-plot_frequency_stability(best_solution_bsa,renewable_capacity, conventional_capacity, data)
-plot_frequency_stability(best_solution_pso,renewable_capacity, conventional_capacity, data)
-plot_frequency_stability(best_solution_ga,renewable_capacity, conventional_capacity, data)
-plot_frequency_stability(best_solution_de,renewable_capacity, conventional_capacity, data)
-plot_frequency_stability(best_solution_sa,renewable_capacity, conventional_capacity, data)
+plot_frequency_stability(best_solution_bsa, data)
+plot_frequency_stability(best_solution_pso, data)
+plot_frequency_stability(best_solution_ga, data)
+plot_frequency_stability(best_solution_de, data)
+plot_frequency_stability(best_solution_sa, data)
 
 
