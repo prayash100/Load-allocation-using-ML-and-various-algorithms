@@ -10,7 +10,7 @@ load_dotenv()
 import tensorflow as tf
 tf.get_logger().setLevel("ERROR")  # Suppress TensorFlow logs 
 
-
+import pandas as pd
 # Step 1: Define grid parameters
 renewable_capacity = {'solar':2000, 'wind': 4000}  # MW
 conventional_capacity = {'coal': 12000, 'gas': 10000}  # MW
@@ -18,25 +18,12 @@ conventional_capacity = {'coal': 12000, 'gas': 10000}  # MW
 scaler_X = joblib.load('scaler_X.pkl')
 scaler_y = joblib.load('scaler_y.pkl')
 
-def fluctuating_load_pattern(base_demand, num_steps=200, max_variation=0.2, inertia=0.005):
-    
-    load = np.zeros(num_steps)
-    load[0] = base_demand  # Starting load demand is the base demand
-    
-    for t in range(1, num_steps):
-        # Generate random fluctuation
-        fluctuation = np.random.uniform(-max_variation, max_variation) * base_demand
-        # Apply inertia (smooth out large fluctuations)
-        load[t] = load[t-1] * (1 - inertia) + (base_demand + fluctuation) * inertia
-        
-        # Ensure that the load demand stays within reasonable bounds
-        load[t] = max(0, load[t])  # Prevent negative load
-        load[t] = min(base_demand * 1.5, load[t])  # Prevent excessively high load
-    
-    return load
+df = pd.read_csv("corrected_gujarat_load_demand_2024.csv")  # Replace with your file path
+df["Index"] = range(len(df))
+df['Load_Demand_MW'] = df['Load_Demand_MW'].round(2)
+df_w = df.iloc[20000:20200]  
 
-base_demand = 20000  # 25,000 MW
-load_demand = fluctuating_load_pattern(base_demand)
+load_demand = df_w['Load_Demand_MW'].values
 
 def load_lstm_model(model_path='lstm_load_prediction.h5'):
     return load_model(model_path, compile=False)
